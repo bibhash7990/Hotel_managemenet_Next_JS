@@ -13,7 +13,7 @@
     "test": "npm run test -w @hotel/api",
     "test:coverage": "npm run test:coverage -w @hotel/api",
     "test:e2e": "npm run test -w @hotel/web",
-    "prepare": "husky",
+    "prepare": "husky || exit 0",
     "db:generate": "npm run prisma:generate -w @hotel/api",
     "db:migrate": "npm run prisma:migrate -w @hotel/api",
     "db:seed": "npm run prisma:seed -w @hotel/api",
