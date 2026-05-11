@@ -43,9 +43,18 @@ export default function AdminRoomsPage() {
 
   if (!token) return null;
 
+  const isManagerPanel = staffBase === '/manager';
+
   return (
     <div className="mx-auto max-w-5xl px-4 py-10">
-      <PageHeader title="Rooms" description="Paginated inventory across your hotels." />
+      <PageHeader
+        title="Rooms"
+        description={
+          isManagerPanel
+            ? 'Room types for your hotels only (inventory you own).'
+            : 'Paginated inventory across all hotels on the platform.'
+        }
+      />
       <Link href={staffBase} className={cn(buttonVariants({ variant: 'secondary' }), 'mt-4 inline-flex')}>
         Back
       </Link>

@@ -380,6 +380,56 @@ For every issue found, fix it and report what was fixed.
 
 ---
 
+## 📌 APPENDIX A — How hotel management works in this system (read before Phase 4)
+
+This section documents **ownership**, **roles**, and **seed data** so the manager panel matches real-world expectations (production-grade mental model).
+
+### A.1 Typical real-world split
+
+| Actor | Responsibility |
+|--------|----------------|
+| **Super admin / chain HQ** | Full catalog, cross-property reporting, user directory, global settings, moderation across all hotels. |
+| **Hotel manager / property operator** | **Only** the hotels they **own or are assigned** to: property profile, room inventory, rates, availability, **their** guest bookings, **their** review queue, **their** exports. |
+
+Industry tools (Opera Cloud, Mews, Cloudbeds, etc.) separate **chain** vs **property** scopes. This codebase models that with **`Hotel.ownerId` → `User.id`**: a manager’s API and UI lists are always filtered to rows where that user is the hotel owner.
+
+### A.2 What the backend already enforces
+
+- **`HOTEL_MANAGER`**: `GET /admin/hotels`, rooms, bookings, reviews, reports are scoped to `ownerId = current user`. Cannot hit customers or site-wide settings (super admin only).
+- **`SUPER_ADMIN`**: Sees the whole platform on the same endpoints (no owner filter).
+- **Create hotel** (`POST /admin/hotels`): New hotels are created with `ownerId =` the authenticated user (managers naturally only create **their** hotels).
+
+So if the **UI** ever looked like “every city in Europe,” the cause was almost certainly **seed data** (all demo hotels assigned to one manager), not missing RBAC.
+
+### A.3 Seed data convention (demo)
+
+After alignment, the seed script should:
+
+- Assign **most** catalog hotels to the **super admin** (platform / demo inventory still browsable by customers on the public site).
+- Assign **one or a few** hotels to the **`manager@example.com`** account so the **Hotel manager** panel clearly shows a **small portfolio**.
+
+Re-run after changes: from `apps/api`, `npx prisma db seed` (or your repo’s documented seed command).
+
+### A.4 UI routes (StayHub)
+
+| Role | Panel URL | Purpose |
+|------|-----------|---------|
+| `SUPER_ADMIN` | `/admin` | Full nav including customers + settings. |
+| `HOTEL_MANAGER` | `/manager` | Same operational APIs, **different** shell: no global customers/settings; copy explains “your properties.” |
+
+### A.5 Production roadmap (manager experience) — checklist for Cursor / PLAN.md
+
+Use this as a **gap list** when you extend beyond read-only tables:
+
+1. **Hotels**: In-panel “Add property” form (POST), edit hotel, image upload — all already allowed by API; wire UI + validation.
+2. **Rooms**: Create/edit room with **hotel picker limited to manager’s hotels** (API already blocks other owners).
+3. **Bookings**: Filters by date/status/hotel; status transitions with confirmation; refund only when policy allows (align with Stripe rules).
+4. **Reviews**: Moderation queue already scoped; add empty states and batch actions if needed.
+5. **Optional multi-staff**: Later, replace sole `ownerId` with a **`HotelStaff` / role assignment** table if one property has multiple logins (not required for MVP).
+6. **Audit**: All destructive actions already log in API patterns — surface read-only audit tail in manager panel if product requires it.
+
+---
+
 ## 🎯 HOW TO USE THIS
 
 1. **Open Cursor** in an empty folder.

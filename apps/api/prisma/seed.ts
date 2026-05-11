@@ -66,14 +66,19 @@ async function main(): Promise<void> {
 
   const amenitiesPool = ['wifi', 'pool', 'spa', 'gym', 'parking', 'breakfast', 'bar', 'concierge'];
 
+  // Platform inventory vs manager-owned: API scopes HOTEL_MANAGER to ownerId only.
+  // Demo manager should see a small portfolio; super admin retains the bulk catalog.
+  const MANAGER_HOTEL_START_INDEX = 8;
+
   for (let i = 0; i < HOTEL_NAMES.length; i++) {
     const name = HOTEL_NAMES[i]!;
     const slug = slugify(name);
     const city = ['Barcelona', 'Lisbon', 'Paris', 'Berlin', 'Amsterdam', 'Rome', 'Vienna', 'Prague', 'Dublin', 'London'][i % 10]!;
     const country = ['Spain', 'Portugal', 'France', 'Germany', 'Netherlands', 'Italy', 'Austria', 'Czechia', 'Ireland', 'UK'][i % 10]!;
+    const ownerId = i >= MANAGER_HOTEL_START_INDEX ? manager.id : superAdmin.id;
     const hotel = await prisma.hotel.create({
       data: {
-        ownerId: manager.id,
+        ownerId,
         name,
         slug,
         description: `${name} offers premium comfort in the heart of ${city}.`,

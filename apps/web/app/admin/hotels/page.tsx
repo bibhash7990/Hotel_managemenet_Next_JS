@@ -33,15 +33,31 @@ export default function AdminHotelsPage() {
 
   if (!token) return null;
 
+  const isManagerPanel = staffBase === '/manager';
+
   return (
     <div className="mx-auto max-w-5xl px-4 py-10">
-      <PageHeader title="Hotels" description="Properties you can manage via the API (full CRUD)." />
+      <PageHeader
+        title={isManagerPanel ? 'Your properties' : 'Hotels'}
+        description={
+          isManagerPanel
+            ? 'Only hotels you operate (your account as owner). Add rooms and handle bookings per property.'
+            : 'All hotels on the platform. Create, edit, or remove properties and assign ownership.'
+        }
+      />
       <Link href={staffBase} className={cn(buttonVariants({ variant: 'secondary' }), 'mt-4 inline-flex')}>
         Back to overview
       </Link>
       {isPending && <p className="mt-6 text-muted-foreground">Loading…</p>}
       {isError && <ErrorState className="mt-6" message={(error as Error).message} onRetry={() => void refetch()} />}
-      {data && (
+      {data && data.items.length === 0 && (
+        <p className="mt-6 rounded-lg border border-dashed border-slate-300 p-6 text-sm text-muted-foreground dark:border-slate-600">
+          {isManagerPanel
+            ? 'You have no hotels yet. A super admin can transfer ownership, or create a hotel via the API as your account (new hotels are always owned by the signed-in manager).'
+            : 'No hotels in the database.'}
+        </p>
+      )}
+      {data && data.items.length > 0 && (
         <AdminDataTable
           className="mt-6"
           columns={['Name', 'Slug', 'City', 'Status']}

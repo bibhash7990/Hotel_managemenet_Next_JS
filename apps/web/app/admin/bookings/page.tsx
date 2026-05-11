@@ -62,9 +62,18 @@ export default function AdminBookingsPage() {
 
   if (!token) return null;
 
+  const isManagerPanel = staffBase === '/manager';
+
   return (
     <div className="mx-auto max-w-5xl px-4 py-10">
-      <PageHeader title="Bookings" description="Operational list with status and guest email." />
+      <PageHeader
+        title="Bookings"
+        description={
+          isManagerPanel
+            ? 'Reservations for your properties only — update status or process refunds you are allowed to perform.'
+            : 'All platform bookings with guest contact and operational controls.'
+        }
+      />
       <Link href={staffBase} className={cn(buttonVariants({ variant: 'secondary' }), 'mt-4 inline-flex')}>
         Back
       </Link>
