@@ -18,6 +18,9 @@ beforeAll(() => {
   process.env.WEB_ORIGIN = process.env.WEB_ORIGIN ?? 'http://localhost:3000';
   process.env.JWT_ACCESS_SECRET = process.env.JWT_ACCESS_SECRET ?? 'a'.repeat(32);
   process.env.JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET ?? 'b'.repeat(32);
+  process.env.GOOGLE_CLIENT_ID =
+    process.env.GOOGLE_CLIENT_ID ??
+    '000000000000-testclientidxxxxxxxxxxxxxxxx.apps.googleusercontent.com';
   process.env.EMAIL_FROM = 'noreply@example.com';
 });
 
@@ -28,5 +31,34 @@ describe('API HTTP (integration)', () => {
     const res = await request(app).get('/health');
     expect(res.status).toBe(200);
     expect(res.body).toEqual({ status: 'ok' });
+  });
+
+  it('GET /api/v1/hotels/destinations returns items array', async () => {
+    const env = loadEnv();
+    const app = createApp(env);
+    const res = await request(app).get('/api/v1/hotels/destinations');
+    expect(res.status).toBe(200);
+    expect(Array.isArray(res.body.items)).toBe(true);
+  });
+
+  it('POST /api/v1/contact with invalid body returns 400', async () => {
+    const env = loadEnv();
+    const app = createApp(env);
+    const res = await request(app).post('/api/v1/contact').send({});
+    expect(res.status).toBe(400);
+    expect(res.body.code).toBe('VALIDATION');
+  });
+
+  it('POST /api/v1/contact with valid body returns ok', async () => {
+    const env = loadEnv();
+    const app = createApp(env);
+    const res = await request(app).post('/api/v1/contact').send({
+      name: 'Test User',
+      email: 'contact-test@example.com',
+      subject: 'Vitest',
+      message: 'Hello from integration test.',
+    });
+    expect(res.status).toBe(200);
+    expect(res.body).toMatchObject({ ok: true, delivered: expect.any(Boolean) });
   });
 });

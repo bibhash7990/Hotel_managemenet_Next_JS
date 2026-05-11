@@ -8,10 +8,7 @@ import { logger } from '../../lib/logger.js';
 
 type ListQuery = HotelListQuery;
 
-function mergeHotelIdIn(
-  current: Prisma.HotelWhereInput['id'],
-  ids: string[]
-): Prisma.StringFilter {
+function mergeHotelIdIn(current: Prisma.HotelWhereInput['id'], ids: string[]): Prisma.StringFilter {
   if (
     current &&
     typeof current === 'object' &&
@@ -66,9 +63,7 @@ async function listHotelsUncached(query: ListQuery) {
     status: 'ACTIVE',
     ...(query.minPrice != null ? { pricePerNight: { gte: query.minPrice } } : {}),
     ...(query.maxPrice != null ? { pricePerNight: { lte: query.maxPrice } } : {}),
-    ...(query.roomType
-      ? { type: { contains: query.roomType, mode: 'insensitive' as const } }
-      : {}),
+    ...(query.roomType ? { type: { contains: query.roomType, mode: 'insensitive' as const } } : {}),
   };
 
   const hasRoomFilters = query.minPrice != null || query.maxPrice != null || !!query.roomType;
@@ -187,9 +182,7 @@ async function listHotelsUncached(query: ListQuery) {
   }
 
   const orderBy: Prisma.HotelOrderByWithRelationInput =
-    query.sort === 'rating'
-      ? { starRating: 'desc' }
-      : { createdAt: 'desc' };
+    query.sort === 'rating' ? { starRating: 'desc' } : { createdAt: 'desc' };
 
   const [total, hotels] = await Promise.all([
     prisma.hotel.count({ where }),
@@ -240,6 +233,49 @@ async function listHotelsUncached(query: ListQuery) {
     total,
     totalPages: Math.ceil(total / query.limit),
   };
+}
+
+const DESTINATIONS_LIMIT = 30;
+
+export type DestinationRow = {
+  city: string;
+  country: string;
+  hotelCount: number;
+  coverImage: string | null;
+};
+
+export async function listActiveDestinations(): Promise<{ items: DestinationRow[] }> {
+  const grouped = await prisma.hotel.groupBy({
+    by: ['city', 'country'],
+    where: { status: 'ACTIVE' },
+    _count: { id: true },
+    orderBy: { _count: { id: 'desc' } },
+    take: DESTINATIONS_LIMIT,
+  });
+
+  const items: DestinationRow[] = await Promise.all(
+    grouped.map(async (g) => {
+      const sample = await prisma.hotel.findFirst({
+        where: {
+          status: 'ACTIVE',
+          city: g.city,
+          country: g.country,
+        },
+        orderBy: { createdAt: 'desc' },
+        select: { images: true },
+      });
+      const imgs = sample?.images as string[] | undefined;
+      const coverImage = imgs?.[0] && typeof imgs[0] === 'string' ? imgs[0] : null;
+      return {
+        city: g.city,
+        country: g.country,
+        hotelCount: g._count.id,
+        coverImage,
+      };
+    })
+  );
+
+  return { items };
 }
 
 export async function getHotelBySlug(slug: string) {

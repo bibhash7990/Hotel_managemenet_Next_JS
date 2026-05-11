@@ -30,6 +30,7 @@ function applyProdOverrides(): void {
     REDIS_URL_PROD: 'REDIS_URL',
     WEB_ORIGIN_PROD: 'WEB_ORIGIN',
     API_URL_PROD: 'API_URL',
+    GOOGLE_CLIENT_ID_PROD: 'GOOGLE_CLIENT_ID',
   };
   for (const [src, dst] of Object.entries(map)) {
     const v = process.env[src];

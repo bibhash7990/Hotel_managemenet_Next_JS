@@ -2,14 +2,16 @@ import { addDays, addMinutes } from '../../utils/dates.js';
 import { prisma } from '../../lib/prisma.js';
 import { hashPassword, verifyPassword } from '../../lib/password.js';
 import { signAccessToken } from '../../lib/jwt.js';
-import {
-  generateRefreshToken,
-  generateUrlToken,
-  hashOpaqueToken,
-} from '../../lib/tokenHash.js';
+import { generateRefreshToken, generateUrlToken, hashOpaqueToken } from '../../lib/tokenHash.js';
 import { sendMail } from '../../lib/email.js';
 import { writeAuditLog } from '../../lib/audit-log.js';
-import { ConflictError, NotFoundError, UnauthorizedError, ValidationError } from '../../lib/errors.js';
+import {
+  ConflictError,
+  NotFoundError,
+  UnauthorizedError,
+  ValidationError,
+} from '../../lib/errors.js';
+import { verifyGoogleIdToken } from '../../lib/google-verify.js';
 import type { Env } from '../../config/env.js';
 import type { UserRole } from '@prisma/client';
 import type { ChangePasswordInput, UpdateProfileInput } from '@hotel/shared';
@@ -17,6 +19,48 @@ import type { ChangePasswordInput, UpdateProfileInput } from '@hotel/shared';
 const REFRESH_DAYS = 7;
 const VERIFY_HOURS = 48;
 const RESET_HOURS = 2;
+
+type SessionUser = {
+  id: string;
+  email: string;
+  name: string;
+  role: UserRole;
+  emailVerified: boolean;
+};
+
+async function issueSessionForUser(
+  env: Env,
+  user: { id: string; email: string; name: string; role: UserRole; emailVerified: boolean }
+): Promise<{
+  accessToken: string;
+  expiresIn: number;
+  refreshToken: string;
+  user: SessionUser;
+}> {
+  const refreshToken = generateRefreshToken();
+  const tokenHash = hashOpaqueToken(refreshToken);
+  const expiresAt = addDays(new Date(), REFRESH_DAYS);
+  await prisma.refreshToken.create({
+    data: { tokenHash, userId: user.id, expiresAt },
+  });
+  const { token: accessToken, expiresIn } = signAccessToken(env.JWT_ACCESS_SECRET, {
+    sub: user.id,
+    role: user.role,
+    email: user.email,
+  });
+  return {
+    accessToken,
+    expiresIn,
+    refreshToken,
+    user: {
+      id: user.id,
+      email: user.email,
+      name: user.name,
+      role: user.role,
+      emailVerified: user.emailVerified,
+    },
+  };
+}
 
 export async function register(
   env: Env,
@@ -93,33 +137,59 @@ export async function login(
   if (!user) {
     throw new UnauthorizedError('Invalid credentials');
   }
+  if (!user.passwordHash) {
+    throw new UnauthorizedError('Invalid credentials');
+  }
   const ok = await verifyPassword(input.password, user.passwordHash);
   if (!ok) {
     throw new UnauthorizedError('Invalid credentials');
   }
-  const refreshToken = generateRefreshToken();
-  const tokenHash = hashOpaqueToken(refreshToken);
-  const expiresAt = addDays(new Date(), REFRESH_DAYS);
-  await prisma.refreshToken.create({
-    data: { tokenHash, userId: user.id, expiresAt },
-  });
-  const { token: accessToken, expiresIn } = signAccessToken(env.JWT_ACCESS_SECRET, {
-    sub: user.id,
-    role: user.role,
-    email: user.email,
-  });
-  return {
-    accessToken,
-    expiresIn,
-    refreshToken,
-    user: {
-      id: user.id,
-      email: user.email,
-      name: user.name,
-      role: user.role,
-      emailVerified: user.emailVerified,
+  return issueSessionForUser(env, user);
+}
+
+export async function loginWithGoogle(
+  env: Env,
+  idToken: string
+): Promise<{
+  accessToken: string;
+  expiresIn: number;
+  refreshToken: string;
+  user: SessionUser;
+}> {
+  const google = await verifyGoogleIdToken(idToken, env.GOOGLE_CLIENT_ID);
+  if (!google.email_verified) {
+    throw new ValidationError('Google email is not verified');
+  }
+  const email = google.email.toLowerCase();
+  const existingByGoogle = await prisma.user.findUnique({ where: { googleSub: google.sub } });
+  if (existingByGoogle) {
+    return issueSessionForUser(env, existingByGoogle);
+  }
+  const existingByEmail = await prisma.user.findUnique({ where: { email } });
+  if (existingByEmail) {
+    throw new ConflictError('This email is already registered. Sign in with email and password.');
+  }
+  const name =
+    google.name?.trim() ||
+    (email.includes('@') ? email.slice(0, email.indexOf('@')) : email) ||
+    'Guest';
+  const user = await prisma.user.create({
+    data: {
+      email,
+      googleSub: google.sub,
+      name,
+      passwordHash: null,
+      avatarUrl: google.picture ?? null,
+      emailVerified: true,
     },
-  };
+  });
+  writeAuditLog({
+    actorId: user.id,
+    action: 'auth.register_google',
+    resource: user.id,
+    metadata: { email: user.email },
+  });
+  return issueSessionForUser(env, user);
 }
 
 export async function refreshSession(
@@ -241,6 +311,9 @@ export async function updateProfile(userId: string, input: UpdateProfileInput) {
 export async function changePassword(userId: string, input: ChangePasswordInput) {
   const user = await prisma.user.findUnique({ where: { id: userId } });
   if (!user) throw new NotFoundError('User not found');
+  if (!user.passwordHash) {
+    throw new ValidationError('Password is not set for this account');
+  }
   const ok = await verifyPassword(input.currentPassword, user.passwordHash);
   if (!ok) throw new UnauthorizedError('Current password is incorrect');
   const passwordHash = await hashPassword(input.newPassword);

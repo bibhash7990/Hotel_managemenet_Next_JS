@@ -12,9 +12,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { PasswordInput } from '@/components/ui/password-input';
 import { apiJson } from '@/lib/api';
-import { setAccessToken } from '@/lib/auth-storage';
-import { syncAccessCookie } from '@/lib/sync-access-cookie';
-import { isHotelManagerRole, isSuperAdminRole, setSessionRole } from '@/lib/session-role';
+import { applySessionAndRedirect } from '@/lib/post-auth-redirect';
+import { GoogleSignInButton } from '@/components/google-sign-in-button';
 import { toast } from 'sonner';
 
 const schema = z.object({
@@ -37,23 +36,7 @@ export function LoginForm({ nextPath }: { nextPath: string }) {
         method: 'POST',
         body: JSON.stringify(values),
       });
-      setAccessToken(res.accessToken);
-      setSessionRole(res.user.role);
-      try {
-        await syncAccessCookie(res.accessToken);
-      } catch {
-        /* cookie mirror optional if JWT_ACCESS_SECRET missing on web */
-      }
-      const isDefaultDestination = nextPath === '/dashboard' || nextPath === '/';
-      const destination =
-        isDefaultDestination && isSuperAdminRole(res.user.role)
-          ? '/admin'
-          : isDefaultDestination && isHotelManagerRole(res.user.role)
-            ? '/manager'
-            : nextPath;
-      toast.success('Welcome back');
-      router.push(destination);
-      router.refresh();
+      await applySessionAndRedirect(router, nextPath, res, 'Welcome back');
     } catch {
       toast.error('Invalid email or password');
     }
@@ -70,7 +53,10 @@ export function LoginForm({ nextPath }: { nextPath: string }) {
       footer={
         <p className="text-center text-muted-foreground">
           Don’t have an account?{' '}
-          <Link href="/register" className="font-medium text-primary underline-offset-4 hover:underline">
+          <Link
+            href="/register"
+            className="font-medium text-primary underline-offset-4 hover:underline"
+          >
             Create one
           </Link>
         </p>
@@ -122,6 +108,15 @@ export function LoginForm({ nextPath }: { nextPath: string }) {
         <Button type="submit" className="w-full" size="lg" disabled={form.formState.isSubmitting}>
           {form.formState.isSubmitting ? 'Signing in…' : 'Continue'}
         </Button>
+        <div className="relative py-2">
+          <div className="absolute inset-0 flex items-center" aria-hidden>
+            <span className="w-full border-t border-border" />
+          </div>
+          <div className="relative flex justify-center text-xs uppercase">
+            <span className="bg-background px-2 text-muted-foreground">Or continue with</span>
+          </div>
+        </div>
+        <GoogleSignInButton nextPath={nextPath} />
       </form>
     </AuthShell>
   );

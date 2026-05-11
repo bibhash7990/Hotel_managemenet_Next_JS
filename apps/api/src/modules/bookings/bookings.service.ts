@@ -13,7 +13,11 @@ import type { CreateBookingInput, PatchBookingBody } from '@hotel/shared';
 import Stripe from 'stripe';
 import type { Env } from '../../config/env.js';
 import { notifyUser } from '../notifications/notify-user.js';
-import { sendBookingCreatedEmail, sendBookingCancelledEmail, sendBookingConfirmedEmail } from './booking-emails.js';
+import {
+  sendBookingCreatedEmail,
+  sendBookingCancelledEmail,
+  sendBookingConfirmedEmail,
+} from './booking-emails.js';
 import { writeAuditLog } from '../../lib/audit-log.js';
 
 const bookingDetailInclude = {
@@ -77,7 +81,7 @@ export async function createBooking(userId: string, input: CreateBookingInput, e
     });
   });
 
-  void notifyUser({
+  void notifyUser(env, {
     userId,
     type: 'booking_created',
     title: 'Booking created',
@@ -147,7 +151,11 @@ export async function cancelBooking(userId: string, bookingId: string, env: Env)
   return updated;
 }
 
-export async function modifyMyBooking(userId: string, bookingId: string, body: Extract<PatchBookingBody, { action: 'modify' }>) {
+export async function modifyMyBooking(
+  userId: string,
+  bookingId: string,
+  body: Extract<PatchBookingBody, { action: 'modify' }>
+) {
   const checkIn = new Date(body.checkIn);
   const checkOut = new Date(body.checkOut);
   if (!(checkOut > checkIn)) {
@@ -167,7 +175,9 @@ export async function modifyMyBooking(userId: string, bookingId: string, body: E
       throw new ValidationError('Stay already started; contact support to change dates.');
     }
 
-    await tx.$executeRaw(Prisma.sql`SELECT id FROM "Room" WHERE id = ${existing.roomId} FOR UPDATE`);
+    await tx.$executeRaw(
+      Prisma.sql`SELECT id FROM "Room" WHERE id = ${existing.roomId} FOR UPDATE`
+    );
 
     const room = await tx.room.findUnique({
       where: { id: existing.roomId },

@@ -10,6 +10,7 @@ import { logoutClient } from '@/lib/auth-logout';
 import { useEffect, useState } from 'react';
 import { cn } from '@/lib/utils';
 import { NotificationBell } from '@/components/notifications/notification-bell';
+import { FcmRegister } from '@/components/notifications/fcm-register';
 
 type NavLink = { label: string; href: string; icon?: React.ComponentType<{ className?: string }> };
 
@@ -39,7 +40,9 @@ export function SiteHeader() {
   const accountLinks: NavLink[] = token
     ? [
         ...(isSuperAdminRole(role) ? [{ label: 'Admin', href: '/admin', icon: ShieldCheck }] : []),
-        ...(isHotelManagerRole(role) ? [{ label: 'Manager', href: '/manager', icon: Building2 }] : []),
+        ...(isHotelManagerRole(role)
+          ? [{ label: 'Manager', href: '/manager', icon: Building2 }]
+          : []),
       ]
     : [];
 
@@ -58,6 +61,7 @@ export function SiteHeader() {
 
   return (
     <header className="sticky top-0 z-40 border-b border-border/60 bg-background/85 backdrop-blur-md supports-[backdrop-filter]:bg-background/70 dark:border-slate-800 dark:bg-slate-950/85">
+      {token ? <FcmRegister accessToken={token} /> : null}
       <div className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-4 px-4 lg:px-8">
         <Link
           href="/"

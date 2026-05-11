@@ -4,6 +4,7 @@ import rateLimit from 'express-rate-limit';
 import {
   changePasswordSchema,
   forgotPasswordSchema,
+  googleAuthSchema,
   loginSchema,
   registerSchema,
   resetPasswordSchema,
@@ -107,7 +108,10 @@ export function createAuthRouter(env: Env): Router {
       });
     } catch (e) {
       if (e instanceof UnauthorizedError) {
-        const email = typeof (req.body as { email?: unknown }).email === 'string' ? (req.body as { email: string }).email : undefined;
+        const email =
+          typeof (req.body as { email?: unknown }).email === 'string'
+            ? (req.body as { email: string }).email
+            : undefined;
         writeAuditLog({
           action: 'auth.login_failed',
           resource: 'user',
@@ -115,6 +119,28 @@ export function createAuthRouter(env: Env): Router {
           ip: req.ip,
         });
       }
+      next(e);
+    }
+  });
+
+  r.post('/google', loginLimiter, async (req, res, next) => {
+    try {
+      const body = googleAuthSchema.parse(req.body);
+      const result = await authService.loginWithGoogle(env, body.idToken);
+      res.cookie('refresh_token', result.refreshToken, refreshCookieOptions(env));
+      writeAuditLog({
+        actorId: result.user.id,
+        action: 'auth.login_google',
+        resource: result.user.id,
+        metadata: { email: result.user.email },
+        ip: req.ip,
+      });
+      res.json({
+        accessToken: result.accessToken,
+        expiresIn: result.expiresIn,
+        user: result.user,
+      });
+    } catch (e) {
       next(e);
     }
   });

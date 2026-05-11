@@ -1,5 +1,4 @@
 import type { ReactNode } from 'react';
-import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
 
 type PageHeaderProps = {
@@ -13,16 +12,9 @@ type PageHeaderProps = {
 export function PageHeader({ title, description, eyebrow, actions, className }: PageHeaderProps) {
   return (
     <header
-      className={cn(
-        'flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between',
-        className
-      )}
+      className={cn('flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between', className)}
     >
-      <motion.div
-        initial={{ opacity: 0, y: 8 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.28, ease: 'easeOut' }}
-      >
+      <div className="animate-slide-up">
         {eyebrow ? (
           <p className="text-xs font-semibold uppercase tracking-widest text-primary">{eyebrow}</p>
         ) : null}
@@ -32,10 +24,8 @@ export function PageHeader({ title, description, eyebrow, actions, className }: 
             {description}
           </p>
         ) : null}
-      </motion.div>
-      {actions ? (
-        <div className="flex shrink-0 flex-wrap items-center gap-2">{actions}</div>
-      ) : null}
+      </div>
+      {actions ? <div className="flex shrink-0 flex-wrap items-center gap-2">{actions}</div> : null}
     </header>
   );
 }

@@ -19,6 +19,7 @@ import { createNotificationsRouter } from './modules/notifications/notifications
 import { createReviewsRouter } from './modules/reviews/reviews.routes.js';
 import { createAdminRouter } from './modules/admin/admin.routes.js';
 import { createStripeWebhookRouter } from './modules/webhooks/stripe.webhook.js';
+import { createContactRouter } from './modules/contact/contact.routes.js';
 import { openApiDocument } from './swagger.js';
 
 export function createApp(env: Env): express.Express {
@@ -61,7 +62,16 @@ export function createApp(env: Env): express.Express {
     message: { error: 'Too many booking requests', code: 'RATE_LIMIT' },
   });
 
+  const contactLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 10,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { error: 'Too many contact submissions', code: 'RATE_LIMIT' },
+  });
+
   app.use('/api/v1/auth', createAuthRouter(env));
+  app.use('/api/v1/contact', contactLimiter, createContactRouter(env));
   app.use('/api/v1/hotels', createHotelsRouter());
   app.use('/api/v1/bookings', bookingLimiter, createBookingsRouter(env));
   app.use('/api/v1/wishlist', createWishlistRouter(env));

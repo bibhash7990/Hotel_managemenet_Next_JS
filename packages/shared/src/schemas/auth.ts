@@ -12,6 +12,10 @@ export const loginSchema = z.object({
   password: z.string().min(1),
 });
 
+export const googleAuthSchema = z.object({
+  idToken: z.string().min(100).max(12000),
+});
+
 export const refreshSchema = z.object({}).strict();
 
 export const forgotPasswordSchema = z.object({
@@ -44,5 +48,6 @@ export const adminUserRoleSchema = z.object({
 
 export type RegisterInput = z.infer<typeof registerSchema>;
 export type LoginInput = z.infer<typeof loginSchema>;
+export type GoogleAuthInput = z.infer<typeof googleAuthSchema>;
 export type UpdateProfileInput = z.infer<typeof updateProfileSchema>;
 export type ChangePasswordInput = z.infer<typeof changePasswordSchema>;

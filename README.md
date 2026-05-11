@@ -52,8 +52,8 @@ npm run dev
 
 ## Seed accounts
 
-| Email               | Password       | Role          |
-|---------------------|----------------|---------------|
+| Email                | Password     | Role          |
+| -------------------- | ------------ | ------------- |
 | customer@example.com | Password123! | CUSTOMER      |
 | manager@example.com  | Password123! | HOTEL_MANAGER |
 | super@example.com    | Password123! | SUPER_ADMIN   |
@@ -73,20 +73,32 @@ The monorepo uses a **single root `.env`** as the source of truth. Both apps loa
 - `apps/api/src/index.ts` reads it directly via `dotenv`.
 - `apps/web/next.config.mjs` reads `../../.env` before Next.js inlines `NEXT_PUBLIC_*` into the client bundle. There is intentionally no `apps/web/.env.local`.
 
-| Variable | Used by | Purpose |
-|----------|---------|---------|
-| `DATABASE_URL` | API | PostgreSQL connection |
-| `MONGODB_URI` | API | MongoDB (reviews, notifications, audit) |
-| `JWT_ACCESS_SECRET`, `JWT_REFRESH_SECRET` | API + Web middleware | JWT signing/verify (each ≥32 chars) |
-| `WEB_ORIGIN` | API | CORS + email links |
-| `API_URL` | API | Public API URL (emails / webhooks) |
-| `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET` | API | Payments + webhook verification |
-| `SMTP_*`, `EMAIL_FROM` | API | Transactional email (optional locally) |
-| `PRISMA_LOG_QUERIES` | API | Set `1` to log SQL in dev |
-| `REDIS_URL` | API | Optional cache / rate-limit store |
-| `CLOUDINARY_URL` | API | Image uploads (optional) |
-| `NEXT_PUBLIC_API_URL` | Web | Browser → API base URL |
-| `NEXT_PUBLIC_SITE_URL` | Web | Canonical URL for SEO |
+| Variable                                                               | Used by              | Purpose                                                           |
+| ---------------------------------------------------------------------- | -------------------- | ----------------------------------------------------------------- |
+| `DATABASE_URL`                                                         | API                  | PostgreSQL connection                                             |
+| `MONGODB_URI`                                                          | API                  | MongoDB (reviews, notifications, audit)                           |
+| `JWT_ACCESS_SECRET`, `JWT_REFRESH_SECRET`                              | API + Web middleware | JWT signing/verify (each ≥32 chars)                               |
+| `WEB_ORIGIN`                                                           | API                  | CORS + email links                                                |
+| `API_URL`                                                              | API                  | Public API URL (emails / webhooks)                                |
+| `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`                           | API                  | Payments + webhook verification                                   |
+| `SMTP_*`, `EMAIL_FROM`                                                 | API                  | Transactional email (optional locally)                            |
+| `PRISMA_LOG_QUERIES`                                                   | API                  | Set `1` to log SQL in dev                                         |
+| `REDIS_URL`                                                            | API                  | Optional cache / rate-limit store                                 |
+| `CLOUDINARY_URL`                                                       | API                  | Image uploads (optional)                                          |
+| `NEXT_PUBLIC_API_URL`                                                  | Web                  | Browser → API base URL                                            |
+| `NEXT_PUBLIC_SITE_URL`                                                 | Web                  | Canonical URL for SEO                                             |
+| `NEXT_PUBLIC_FIREBASE_*`, `NEXT_PUBLIC_FIREBASE_VAPID_KEY`             | Web                  | Firebase client + web push (optional)                             |
+| `FIREBASE_PROJECT_ID`, `FIREBASE_CLIENT_EMAIL`, `FIREBASE_PRIVATE_KEY` | API                  | Firebase Admin for sending FCM (optional)                         |
+| `GOOGLE_APPLICATION_CREDENTIALS`                                       | API                  | Path to service account JSON instead of the trio above (optional) |
+
+#### Firebase Cloud Messaging (optional)
+
+1. In [Firebase Console](https://console.firebase.google.com/), create or open a project and add a **Web** app. Copy the `firebaseConfig` values into the `NEXT_PUBLIC_FIREBASE_*` variables in `.env`.
+2. Open **Build → Cloud Messaging** and create a **Web Push certificate** (VAPID). Set `NEXT_PUBLIC_FIREBASE_VAPID_KEY`.
+3. Under **Project settings → Service accounts**, generate a new private key. Set `FIREBASE_PROJECT_ID`, `FIREBASE_CLIENT_EMAIL`, and `FIREBASE_PRIVATE_KEY` in `.env` (escape newlines in the private key as `\n` on a single line), **or** set `GOOGLE_APPLICATION_CREDENTIALS` to the path of the downloaded JSON file on the API host.
+4. Ensure `WEB_ORIGIN` matches the site URL users open in the browser (used for notification click-through links).
+
+The service worker script is served at `/firebase-messaging-sw.js` (rewritten to a Next.js route that injects your public Firebase config). Push tokens are stored in MongoDB collection `fcm_tokens`. If Firebase env vars are omitted, in-app notifications still work; the API skips sending FCM.
 
 #### Dual-env switching (`<KEY>_PROD`)
 
@@ -97,21 +109,21 @@ DATABASE_URL=postgresql://hotel:hotel@localhost:5432/hotel_booking
 DATABASE_URL_PROD=postgresql://user:pass@prod-host:5432/hotel_booking
 ```
 
-Supported keys: `DATABASE_URL`, `MONGODB_URI`, `REDIS_URL`, `WEB_ORIGIN`, `API_URL`, `NEXT_PUBLIC_API_URL`, `NEXT_PUBLIC_SITE_URL`, `NEXT_PUBLIC_WEB_ORIGIN`.
+Supported keys: `DATABASE_URL`, `MONGODB_URI`, `REDIS_URL`, `WEB_ORIGIN`, `API_URL`, `NEXT_PUBLIC_API_URL`, `NEXT_PUBLIC_SITE_URL`, `NEXT_PUBLIC_WEB_ORIGIN`, `NEXT_PUBLIC_GOOGLE_CLIENT_ID`, and the `NEXT_PUBLIC_FIREBASE_*` / `NEXT_PUBLIC_FIREBASE_VAPID_KEY` pair used for FCM (see `apps/web/next.config.mjs`).
 
 When deploying to Render / Railway / Vercel, you can either set the canonical names directly in the platform UI **or** keep both forms in `.env` and let the override logic pick the right one. Platform-provided env vars always win (dotenv never overrides).
 
 ## Scripts
 
-| Script        | Description                                      |
-|---------------|--------------------------------------------------|
-| `npm run dev` | Run `apps/web` and `apps/api` concurrently       |
-| `npm run build` | Build shared package, API, then Next.js app  |
-| `npm run lint`  | Lint/typecheck API + Next lint for web         |
-| `npm run typecheck` | TypeScript checks for web + API            |
-| `npm run test`  | API unit tests (Vitest)                        |
-| `npm run test:e2e` | Playwright tests (requires dev server)    |
-| `npm run analyze -w @hotel/web` | Next.js bundle analyzer (`ANALYZE=true`) |
+| Script                            | Description                                                  |
+| --------------------------------- | ------------------------------------------------------------ |
+| `npm run dev`                     | Run `apps/web` and `apps/api` concurrently                   |
+| `npm run build`                   | Build shared package, API, then Next.js app                  |
+| `npm run lint`                    | Lint/typecheck API + Next lint for web                       |
+| `npm run typecheck`               | TypeScript checks for web + API                              |
+| `npm run test`                    | API unit tests (Vitest)                                      |
+| `npm run test:e2e`                | Playwright tests (requires dev server)                       |
+| `npm run analyze -w @hotel/web`   | Next.js bundle analyzer (`ANALYZE=true`)                     |
 | `npm run lh:report -w @hotel/web` | Lighthouse HTML report (dev server must be running on :3000) |
 
 ## Project layout

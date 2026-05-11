@@ -21,6 +21,15 @@ export function createHotelsRouter(): Router {
     }
   });
 
+  r.get('/destinations', async (_req, res, next) => {
+    try {
+      const result = await hotelsService.listActiveDestinations();
+      res.json(result);
+    } catch (e) {
+      next(e);
+    }
+  });
+
   r.get('/:slug/rooms/:roomId', async (req, res, next) => {
     try {
       const slug = hotelSlugParamSchema.parse(routeParam(req.params.slug, 'slug'));
@@ -41,8 +50,18 @@ export function createHotelsRouter(): Router {
         ? z.string().cuid().parse(String(req.query.roomId))
         : defaultRoomId;
       if (!roomId) throw new NotFoundError('No rooms available for calendar');
-      const startStr = z.string().min(8).max(12).parse(String(req.query.start ?? new Date().toISOString().slice(0, 10)));
-      const nights = z.coerce.number().int().min(1).max(90).default(42).parse(req.query.nights ?? '42');
+      const startStr = z
+        .string()
+        .min(8)
+        .max(12)
+        .parse(String(req.query.start ?? new Date().toISOString().slice(0, 10)));
+      const nights = z.coerce
+        .number()
+        .int()
+        .min(1)
+        .max(90)
+        .default(42)
+        .parse(req.query.nights ?? '42');
       const start = new Date(`${startStr}T00:00:00.000Z`);
       const result = await availabilityService.roomNightCalendar(slug, roomId, start, nights);
       res.json(result);

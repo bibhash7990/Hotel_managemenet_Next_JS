@@ -9,6 +9,8 @@ const envSchema = z.object({
   WEB_ORIGIN: z.string().url().default('http://localhost:3000'),
   JWT_ACCESS_SECRET: z.string().min(32),
   JWT_REFRESH_SECRET: z.string().min(32),
+  /** Google OAuth Web client ID (used to verify ID tokens). */
+  GOOGLE_CLIENT_ID: z.string().min(1),
   STRIPE_SECRET_KEY: z.string().optional(),
   STRIPE_WEBHOOK_SECRET: z.string().optional(),
   REDIS_URL: z.string().optional(),
@@ -18,7 +20,15 @@ const envSchema = z.object({
   SMTP_USER: z.string().optional(),
   SMTP_PASS: z.string().optional(),
   EMAIL_FROM: z.string().email().default('noreply@example.com'),
+  /** Inbox for public contact form submissions (defaults to EMAIL_FROM). */
+  CONTACT_TO_EMAIL: z.string().email().optional(),
   PRISMA_LOG_QUERIES: z.enum(['0', '1']).optional(),
+  /** Firebase Admin: use either this trio or application default credentials. */
+  FIREBASE_PROJECT_ID: z.string().min(1).optional(),
+  FIREBASE_CLIENT_EMAIL: z.string().email().optional(),
+  FIREBASE_PRIVATE_KEY: z.string().min(1).optional(),
+  /** Path to service account JSON (alternative to FIREBASE_* trio). */
+  GOOGLE_APPLICATION_CREDENTIALS: z.string().min(1).optional(),
 });
 
 export type Env = z.infer<typeof envSchema>;

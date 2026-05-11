@@ -12,6 +12,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { PasswordInput } from '@/components/ui/password-input';
 import { apiJson } from '@/lib/api';
+import { GoogleSignInButton } from '@/components/google-sign-in-button';
 import { toast } from 'sonner';
 
 const schema = z.object({
@@ -64,7 +65,10 @@ export default function RegisterPage() {
       footer={
         <p className="text-center text-muted-foreground">
           Already have an account?{' '}
-          <Link href="/login" className="font-medium text-primary underline-offset-4 hover:underline">
+          <Link
+            href="/login"
+            className="font-medium text-primary underline-offset-4 hover:underline"
+          >
             Log in
           </Link>
         </p>
@@ -142,6 +146,15 @@ export default function RegisterPage() {
         <Button type="submit" size="lg" className="w-full" disabled={form.formState.isSubmitting}>
           {form.formState.isSubmitting ? 'Creating account…' : 'Create account'}
         </Button>
+        <div className="relative py-2">
+          <div className="absolute inset-0 flex items-center" aria-hidden>
+            <span className="w-full border-t border-border" />
+          </div>
+          <div className="relative flex justify-center text-xs uppercase">
+            <span className="bg-background px-2 text-muted-foreground">Or continue with</span>
+          </div>
+        </div>
+        <GoogleSignInButton nextPath="/dashboard" welcomeNewUser />
         <p className="text-xs text-muted-foreground">
           By continuing you agree to StayHub’s{' '}
           <Link href="#" className="font-medium underline-offset-2 hover:underline">
