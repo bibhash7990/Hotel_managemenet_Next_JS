@@ -1,0 +1,39 @@
+{
+  "name": "hotel-booking-monorepo",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "concurrently -n web,api -c blue,green \"npm run dev -w @hotel/web\" \"npm run dev -w @hotel/api\"",
+    "build": "npm run build -w packages/shared && npm run build -w @hotel/api && npm run build -w @hotel/web",
+    "lint": "npm run lint -w @hotel/web && npm run lint -w @hotel/api",
+    "typecheck": "npm run typecheck -w @hotel/web && npm run typecheck -w @hotel/api",
+    "test": "npm run test -w @hotel/api",
+    "test:coverage": "npm run test:coverage -w @hotel/api",
+    "test:e2e": "npm run test -w @hotel/web",
+    "prepare": "husky",
+    "db:generate": "npm run prisma:generate -w @hotel/api",
+    "db:migrate": "npm run prisma:migrate -w @hotel/api",
+    "db:seed": "npm run prisma:seed -w @hotel/api",
+    "postinstall": "npm run build -w packages/shared"
+  },
+  "lint-staged": {
+    "*.{ts,tsx,js,jsx,json,md,yml,yaml}": [
+      "prettier --write"
+    ],
+    "apps/web/**/*.{ts,tsx,js,jsx}": [
+      "npm run lint -w @hotel/web"
+    ],
+    "apps/api/**/*.ts": [
+      "npm run lint -w @hotel/api"
+    ]
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.0",
+    "husky": "^9.1.7",
+    "lint-staged": "^16.4.0",
+    "prettier": "^3.4.2"
+  }
+}
