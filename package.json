@@ -1,6 +1,9 @@
 {
   "name": "hotel-booking-monorepo",
   "private": true,
+  "dependencies": {
+    "next": "14.2.18"
+  },
   "workspaces": [
     "apps/*",
     "packages/*"
